@@ -5,8 +5,11 @@ import (
 	"os"
 
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/config"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server/handlers"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/persistence/postgres"
 	logger "github.com/chishkin-afk/intask/backend/pkg/log"
+	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -20,6 +23,9 @@ type DI struct {
 	log *slog.Logger
 
 	db *sqlx.DB
+
+	handler *gin.Engine
+	server  *server.Server
 }
 
 func (di *DI) Config() *config.Config {
@@ -62,4 +68,25 @@ func (di *DI) DB() *sqlx.DB {
 	}
 
 	return di.db
+}
+
+func (di *DI) Handler() *gin.Engine {
+	if di.handler == nil {
+		di.handler = handlers.New(
+			di.Config(),
+		)
+	}
+
+	return di.handler
+}
+
+func (di *DI) Server() *server.Server {
+	if di.server == nil {
+		di.server = server.New(
+			di.Config(),
+			di.Handler(),
+		)
+	}
+
+	return di.server
 }

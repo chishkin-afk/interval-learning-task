@@ -7,6 +7,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// Connect creates a new PostgreSQL database connection using the provided configuration.
+//
+// The function establishes a connection to the database, applies connection pool
+// settings, and returns a ready-to-use sqlx.DB instance.
+//
+// It returns an error if the database connection cannot be established.
 func Connect(cfg *config.Config) (*sqlx.DB, error) {
 	db, err := sqlx.Connect("postgres", getDSN(cfg))
 	if err != nil {
