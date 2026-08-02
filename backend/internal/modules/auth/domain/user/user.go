@@ -53,6 +53,30 @@ func New(email Email, password string) (*User, error) {
 	}, nil
 }
 
+// Restore reconstructs a User entity from persisted data.
+//
+// Unlike New, Restore returns the entity even if validation warnings occur.
+// Returned errors should be treated as non-blocking validation issues
+// and may be used for logging or data integrity monitoring.
+func Restore(
+	id uuid.UUID,
+	tgChatID int64,
+	tgEnabled bool,
+	email Email,
+	passwordHash PasswordHash,
+	createdAt, updatedAt time.Time,
+) *User {
+	return &User{
+		id:           id,
+		tgChatID:     tgChatID,
+		tgEnabled:    tgEnabled,
+		email:        email,
+		passwordHash: passwordHash,
+		createdAt:    createdAt,
+		updatedAt:    updatedAt,
+	}
+}
+
 // ChangeTgChatID updates the Telegram chat ID associated with the user.
 //
 // If TgChatID is zero, Telegram integration is disabled.
