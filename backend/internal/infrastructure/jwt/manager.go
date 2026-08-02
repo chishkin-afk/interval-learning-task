@@ -13,22 +13,22 @@ import (
 	"github.com/google/uuid"
 )
 
-// JwtManager manages JWT token generation and validation.
+// JWTManager manages JWT token generation and validation.
 //
 // It uses RSA key pairs for signing and verifying tokens.
 // The private key is used to generate tokens, while the public key
 // is used to validate their authenticity.
-type JwtManager struct {
+type JWTManager struct {
 	cfg     *config.Config
 	private *rsa.PrivateKey
 	public  *rsa.PublicKey
 }
 
-// New creates a new JwtManager instance.
+// New creates a new JWTManager instance.
 //
 // It loads RSA private and public keys from paths specified in the configuration.
 // Returns an error if any of the keys cannot be loaded or parsed.
-func New(cfg *config.Config) (*JwtManager, error) {
+func New(cfg *config.Config) (*JWTManager, error) {
 	private, err := loadPrivate(cfg.JWT.PrivatePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
@@ -39,7 +39,7 @@ func New(cfg *config.Config) (*JwtManager, error) {
 		return nil, fmt.Errorf("failed to load public key: %w", err)
 	}
 
-	return &JwtManager{
+	return &JWTManager{
 		cfg:     cfg,
 		private: private,
 		public:  public,
@@ -52,7 +52,7 @@ func New(cfg *config.Config) (*JwtManager, error) {
 // including issuer, subject, issued time, and expiration time.
 //
 // The token is signed using the RSA private key.
-func (jm *JwtManager) Generate(userID uuid.UUID) (string, error) {
+func (jm *JWTManager) Generate(userID uuid.UUID) (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, customClaims{
 		UserID: userID,
@@ -75,7 +75,7 @@ func (jm *JwtManager) Generate(userID uuid.UUID) (string, error) {
 //
 // The token signature is validated using the RSA public key.
 // Returns ErrInvalidToken if the token is invalid or cannot be verified.
-func (jm *JwtManager) Validate(tokenString string) (uuid.UUID, error) {
+func (jm *JWTManager) Validate(tokenString string) (uuid.UUID, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &customClaims{}, func(t *jwt.Token) (any, error) {
 		if t.Method != jwt.SigningMethodRS256 {
 			return nil, errs.ErrInvalidToken
