@@ -35,3 +35,8 @@ persistence:
       max_opens: 5
       max_lifetime: 15m
       max_idle_time: 30m
+
+jwt:
+  private_path: ./jwtRS256.key
+  public_path: ./jwtRS256.key.pub
+  token_ttl: 168h

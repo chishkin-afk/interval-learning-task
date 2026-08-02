@@ -20,6 +20,7 @@ type Config struct {
 	App         App         `yaml:"app"`
 	Server      Server      `yaml:"server"`
 	Persistence Persistence `yaml:"persistence"`
+	JWT         JWT         `yaml:"jwt"`
 }
 
 type App struct {
@@ -66,6 +67,12 @@ type Persistence struct {
 			MaxIdleTime time.Duration `yaml:"max_idle_time" validate:"required,gte=1m"`
 		} `yaml:"conns"`
 	} `yaml:"postgres"`
+}
+
+type JWT struct {
+	PrivatePath string        `yaml:"private_path" validate:"required,path"`
+	PublicPath  string        `yaml:"public_path" validate:"required,path"`
+	TokenTTL    time.Duration `yaml:"token_ttl" validate:"required,min=1m"`
 }
 
 // New is a constructor for Config
