@@ -5,7 +5,9 @@ import (
 	"os"
 
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/config"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/persistence/postgres"
 	logger "github.com/chishkin-afk/intask/backend/pkg/log"
+	"github.com/jmoiron/sqlx"
 )
 
 // DI is a dependency injection container
@@ -16,6 +18,8 @@ import (
 type DI struct {
 	cfg *config.Config
 	log *slog.Logger
+
+	db *sqlx.DB
 }
 
 func (di *DI) Config() *config.Config {
@@ -42,4 +46,20 @@ func (di *DI) Log() *slog.Logger {
 	}
 
 	return di.log
+}
+
+func (di *DI) DB() *sqlx.DB {
+	if di.db == nil {
+		db, err := postgres.Connect(di.Config())
+		if err != nil {
+			slog.Error("failed to connect db",
+				slog.String("error", err.Error()),
+			)
+			os.Exit(1)
+		}
+
+		di.db = db
+	}
+
+	return di.db
 }

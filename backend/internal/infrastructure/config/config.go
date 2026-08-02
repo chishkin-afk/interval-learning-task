@@ -49,14 +49,15 @@ type Server struct {
 }
 
 type Persistence struct {
-	Postgres struct {
+	MigrationsPath string `yaml:"migrations_path" validate:"omitempty"`
+	Postgres       struct {
 		Host    string `yaml:"host" validate:"required,hostname"`
 		Port    int    `yaml:"port" validate:"required,gte=1,lte=65535"`
 		SSLMode string `yaml:"sslmode" validate:"required,oneof=disable enable"`
 		Auth    struct {
 			User     string `yaml:"user" validate:"required"`
 			Password string `yaml:"password" validate:"required"`
-			DBName   string `yaml:"dbname" validate:"dbname"`
+			DBName   string `yaml:"dbname" validate:"required"`
 		} `yaml:"auth"`
 		Conns struct {
 			MaxIdles    int           `yaml:"max_idles" validate:"required,gte=1"`
