@@ -286,7 +286,7 @@ func (ur *userRepository) delete(ctx context.Context, db DB, id uuid.UUID) error
 }
 
 func (ur *userRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
-	return ur.sqlBuilder.Delete("users").Where("id = ?", id).ToSql()
+	return ur.sqlBuilder.Delete("users").Where("id = ?", id).Suffix("CASCADE").ToSql()
 }
 
 func (ur *userRepository) beginTx(ctx context.Context) (*sql.Tx, func(), error) {

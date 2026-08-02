@@ -5,6 +5,7 @@ import (
 
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/config"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
 // Connect creates a new PostgreSQL database connection using the provided configuration.
