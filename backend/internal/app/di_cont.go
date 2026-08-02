@@ -1,13 +1,18 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/config"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server/handlers"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server/middlewares"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/jwt"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/persistence/postgres"
+	authservice "github.com/chishkin-afk/intask/backend/internal/modules/auth/application/services"
+	userpg "github.com/chishkin-afk/intask/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
 	logger "github.com/chishkin-afk/intask/backend/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -26,6 +31,10 @@ type DI struct {
 
 	handler *gin.Engine
 	server  *server.Server
+
+	jwtMngr *jwt.JWTManager
+
+	authService *authservice.AuthService
 }
 
 func (di *DI) Config() *config.Config {
@@ -64,6 +73,27 @@ func (di *DI) DB() *sqlx.DB {
 			os.Exit(1)
 		}
 
+		Add(func(ctx context.Context) error {
+			errCh := make(chan error, 1)
+			go func() {
+				defer close(errCh)
+				if err := db.Close(); err != nil {
+					errCh <- err
+				}
+			}()
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case err, ok := <-errCh:
+				if !ok {
+					return err
+				}
+
+				return nil
+			}
+		})
+
 		di.db = db
 	}
 
@@ -74,6 +104,13 @@ func (di *DI) Handler() *gin.Engine {
 	if di.handler == nil {
 		di.handler = handlers.New(
 			di.Config(),
+			di.AuthService(),
+			middlewares.NewAuthMiddleware(
+				di.JWT(),
+				map[string]bool{
+					"/api/v1/user": true,
+				},
+			),
 		)
 	}
 
@@ -89,4 +126,33 @@ func (di *DI) Server() *server.Server {
 	}
 
 	return di.server
+}
+
+func (di *DI) AuthService() *authservice.AuthService {
+	if di.authService == nil {
+		di.authService = authservice.New(
+			di.Config(),
+			di.Log(),
+			userpg.New(di.Log(), di.DB()),
+			di.JWT(),
+		)
+	}
+
+	return di.authService
+}
+
+func (di *DI) JWT() *jwt.JWTManager {
+	if di.jwtMngr == nil {
+		jwtMngr, err := jwt.New(di.Config())
+		if err != nil {
+			slog.Error("failed to get jwt manager",
+				slog.String("error", err.Error()),
+			)
+			os.Exit(1)
+		}
+
+		di.jwtMngr = jwtMngr
+	}
+
+	return di.jwtMngr
 }

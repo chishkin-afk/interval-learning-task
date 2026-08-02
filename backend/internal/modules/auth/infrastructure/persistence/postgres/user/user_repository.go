@@ -17,7 +17,7 @@ var (
 	allColumns = []string{
 		"id",
 		"tg_chat_id",
-		"telegram_enable",
+		"telegram_enabled",
 		"email",
 		"password_hash",
 		"created_at",
@@ -229,9 +229,9 @@ func (ur *userRepository) update(ctx context.Context, db DB, updUser *user.User)
 
 func (ur *userRepository) buildUpdateQuery(record *userRecord) (string, []any, error) {
 	return ur.sqlBuilder.Update("users").SetMap(map[string]any{
-		"tg_chat_id":      record.TgChatID,
-		"telegram_enable": record.TgEnabled,
-		"updated_at":      record.UpdatedAt,
+		"tg_chat_id":       record.TgChatID,
+		"telegram_enabled": record.TgEnabled,
+		"updated_at":       record.UpdatedAt,
 	}).Where("id = ?", record.ID).ToSql()
 }
 
@@ -286,7 +286,7 @@ func (ur *userRepository) delete(ctx context.Context, db DB, id uuid.UUID) error
 }
 
 func (ur *userRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
-	return ur.sqlBuilder.Delete("users").Where("id = ?", id).Suffix("CASCADE").ToSql()
+	return ur.sqlBuilder.Delete("users").Where("id = ?", id).ToSql()
 }
 
 func (ur *userRepository) beginTx(ctx context.Context) (*sql.Tx, func(), error) {

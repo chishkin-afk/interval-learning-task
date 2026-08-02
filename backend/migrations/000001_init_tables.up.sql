@@ -19,5 +19,5 @@ CREATE TABLE IF NOT EXISTS tasks (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    FOREIGN KEY (user_id) REFERENCES users(id)
-)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+)ж

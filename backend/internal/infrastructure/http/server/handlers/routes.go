@@ -15,19 +15,27 @@ import (
 // In production, only recovery middleware is enabled.
 //
 // Additional middleware can be provided through the mws parameter.
-func New(cfg *config.Config, mws ...gin.HandlerFunc) *gin.Engine {
+func New(
+	cfg *config.Config,
+	authService authService,
+	mws ...gin.HandlerFunc,
+) *gin.Engine {
 	router := getRouter(cfg)
 	router.Use(mws...)
 
-	handlers := handlers{}
-	_ = handlers
+	handlers := handlers{
+		authService: authService,
+	}
 
 	api := router.Group("/api")
 	{
 		v1 := api.Group("/v1")
 		{
-			_ = v1
-			// TODO: routes...
+			v1.POST("/register", handlers.Register())
+			v1.POST("/login", handlers.Login())
+			v1.GET("/user", handlers.GetSelf())
+			v1.PATCH("/user", handlers.UpdateUser())
+			v1.DELETE("/user", handlers.DeleteUser())
 		}
 	}
 

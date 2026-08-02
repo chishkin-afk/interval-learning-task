@@ -70,8 +70,8 @@ type Persistence struct {
 }
 
 type JWT struct {
-	PrivatePath string        `yaml:"private_path" validate:"required,path"`
-	PublicPath  string        `yaml:"public_path" validate:"required,path"`
+	PrivatePath string        `yaml:"private_path" validate:"required"`
+	PublicPath  string        `yaml:"public_path" validate:"required"`
 	TokenTTL    time.Duration `yaml:"token_ttl" validate:"required,min=1m"`
 }
 
