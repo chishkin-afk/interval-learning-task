@@ -18,6 +18,7 @@ import (
 func New(
 	cfg *config.Config,
 	authService authService,
+	taskService taskService,
 	mws ...gin.HandlerFunc,
 ) *gin.Engine {
 	router := getRouter(cfg)
@@ -31,11 +32,23 @@ func New(
 	{
 		v1 := api.Group("/v1")
 		{
-			v1.POST("/register", handlers.Register())
-			v1.POST("/login", handlers.Login())
-			v1.GET("/user", handlers.GetSelf())
-			v1.PATCH("/user", handlers.UpdateUser())
-			v1.DELETE("/user", handlers.DeleteUser())
+			auth := v1.Group("/auth")
+			{
+				auth.POST("/register", handlers.Register())
+				auth.POST("/login", handlers.Login())
+				auth.GET("/user", handlers.GetSelf())
+				auth.PATCH("/user", handlers.UpdateUser())
+				auth.DELETE("/user", handlers.DeleteUser())
+			}
+
+			task := v1.Group("/tasks")
+			{
+				task.POST("/task", handlers.CreateTask())
+				task.GET("/task/:id", handlers.GetTaskByID())
+				task.GET("/", handlers.ListTasksAll())
+				task.PATCH("/task/:id", handlers.UpdateTask())
+				task.DELETE("/task/:id", handlers.DeleteTask())
+			}
 		}
 	}
 

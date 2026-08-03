@@ -13,6 +13,8 @@ import (
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/persistence/postgres"
 	authservice "github.com/chishkin-afk/intask/backend/internal/modules/auth/application/services"
 	userpg "github.com/chishkin-afk/intask/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
+	taskservice "github.com/chishkin-afk/intask/backend/internal/modules/task/application/services"
+	taskpg "github.com/chishkin-afk/intask/backend/internal/modules/task/infrastructure/persistence/postgres/task"
 	logger "github.com/chishkin-afk/intask/backend/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -35,6 +37,7 @@ type DI struct {
 	jwtMngr *jwt.JWTManager
 
 	authService *authservice.AuthService
+	taskService *taskservice.TaskService
 }
 
 func (di *DI) Config() *config.Config {
@@ -105,10 +108,14 @@ func (di *DI) Handler() *gin.Engine {
 		di.handler = handlers.New(
 			di.Config(),
 			di.AuthService(),
+			di.TaskService(),
 			middlewares.NewAuthMiddleware(
 				di.JWT(),
 				map[string]bool{
-					"/api/v1/user": true,
+					"/api/v1/auth/user":     true,
+					"api/v1/tasks/task/:id": true,
+					"api/v1/tasks/task":     true,
+					"api/v1/tasks/":         true,
 				},
 			),
 		)
@@ -139,6 +146,20 @@ func (di *DI) AuthService() *authservice.AuthService {
 	}
 
 	return di.authService
+}
+
+func (di *DI) TaskService() *taskservice.TaskService {
+	if di.taskService == nil {
+		di.taskService = taskservice.New(
+			di.Log(),
+			taskpg.New(
+				di.Log(),
+				di.DB(),
+			),
+		)
+	}
+
+	return di.taskService
 }
 
 func (di *DI) JWT() *jwt.JWTManager {
