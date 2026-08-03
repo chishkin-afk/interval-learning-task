@@ -11,6 +11,7 @@ import (
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server/middlewares"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/jwt"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/persistence/postgres"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/workerpool"
 	authservice "github.com/chishkin-afk/intask/backend/internal/modules/auth/application/services"
 	userpg "github.com/chishkin-afk/intask/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
 	taskservice "github.com/chishkin-afk/intask/backend/internal/modules/task/application/services"
@@ -38,6 +39,8 @@ type DI struct {
 
 	authService *authservice.AuthService
 	taskService *taskservice.TaskService
+
+	workerpool *workerpool.WorkerPool
 }
 
 func (di *DI) Config() *config.Config {
@@ -112,10 +115,10 @@ func (di *DI) Handler() *gin.Engine {
 			middlewares.NewAuthMiddleware(
 				di.JWT(),
 				map[string]bool{
-					"/api/v1/auth/user":     true,
-					"api/v1/tasks/task/:id": true,
-					"api/v1/tasks/task":     true,
-					"api/v1/tasks/":         true,
+					"/api/v1/auth/user":      true,
+					"/api/v1/tasks/task/:id": true,
+					"/api/v1/tasks/task":     true,
+					"/api/v1/tasks/":         true,
 				},
 			),
 		)
@@ -176,4 +179,14 @@ func (di *DI) JWT() *jwt.JWTManager {
 	}
 
 	return di.jwtMngr
+}
+
+func (di *DI) WorkerPool() *workerpool.WorkerPool {
+	if di.workerpool == nil {
+		di.workerpool = workerpool.New(
+			di.Config(),
+		)
+	}
+
+	return di.workerpool
 }

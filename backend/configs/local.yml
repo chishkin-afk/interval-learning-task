@@ -40,3 +40,8 @@ jwt:
   private_path: ./jwtRS256.key
   public_path: ./jwtRS256.key.pub
   token_ttl: 168h
+
+workerpool:
+  workers: 10
+  task_buf: 20
+  err_buf: 20

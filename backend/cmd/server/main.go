@@ -23,6 +23,19 @@ func main() {
 	var di app.DI
 
 	go func() {
+		errs := di.WorkerPool().Errors()
+		for err := range errs {
+			di.Log().Error("err in worker pool",
+				slog.String("error", err.Error()),
+			)
+		}
+
+		di.Log().Info("goroutine with errs wp was closed",
+			slog.Int64("dropped_errors", di.WorkerPool().Dropped()),
+		)
+	}()
+
+	go func() {
 		di.Log().Info("server is running...",
 			slog.String("addr", di.Config().Server.HTTP.Addr),
 		)

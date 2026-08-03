@@ -26,6 +26,7 @@ func New(
 
 	handlers := handlers{
 		authService: authService,
+		taskService: taskService,
 	}
 
 	api := router.Group("/api")

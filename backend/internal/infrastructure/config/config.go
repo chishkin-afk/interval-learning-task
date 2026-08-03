@@ -21,6 +21,7 @@ type Config struct {
 	Server      Server      `yaml:"server"`
 	Persistence Persistence `yaml:"persistence"`
 	JWT         JWT         `yaml:"jwt"`
+	WorkerPool  WorkerPool  `yaml:"workerpool"`
 }
 
 type App struct {
@@ -73,6 +74,12 @@ type JWT struct {
 	PrivatePath string        `yaml:"private_path" validate:"required"`
 	PublicPath  string        `yaml:"public_path" validate:"required"`
 	TokenTTL    time.Duration `yaml:"token_ttl" validate:"required,min=1m"`
+}
+
+type WorkerPool struct {
+	Workers int64 `yaml:"workers" validate:"required,gte=1"`
+	TaskBuf int64 `yaml:"task_buf" validate:"required,gte=1"`
+	ErrBuf  int64 `yaml:"err_buf" validate:"required,gte=1"`
 }
 
 // New is a constructor for Config
