@@ -13,17 +13,17 @@ import (
 	"github.com/lib/pq"
 )
 
-var (
-	allColumns = []string{
-		"id",
-		"tg_chat_id",
-		"telegram_enabled",
-		"email",
-		"password_hash",
-		"created_at",
-		"updated_at",
-	}
-)
+// TODO: вынести билды в builder.go
+
+var userColumns = []string{
+	"id",
+	"tg_chat_id",
+	"telegram_enabled",
+	"email",
+	"password_hash",
+	"created_at",
+	"updated_at",
+}
 
 // DB represents the minimal database functionality required by the user
 // repository to execute SQL statements and retrieve rows.
@@ -43,17 +43,17 @@ type TxDB interface {
 }
 
 type userRepository struct {
-	log        *slog.Logger
-	db         TxDB
-	sqlBuilder squirrel.StatementBuilderType
+	log *slog.Logger
+	db  TxDB
+	sb  squirrel.StatementBuilderType
 }
 
 // New creates a new PostgreSQL-backed user repository.
 func New(log *slog.Logger, db TxDB) *userRepository {
 	return &userRepository{
-		log:        log,
-		db:         db,
-		sqlBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
+		log: log,
+		db:  db,
+		sb:  squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 }
 
@@ -89,8 +89,8 @@ func (ur *userRepository) save(ctx context.Context, db DB, user *user.User) erro
 }
 
 func (ur *userRepository) buildInsertQuery(record *userRecord) (string, []any, error) {
-	return ur.sqlBuilder.Insert("users").Columns(
-		allColumns...,
+	return ur.sb.Insert("users").Columns(
+		userColumns...,
 	).Values(
 		record.ID,
 		record.TgChatID,
@@ -131,7 +131,7 @@ func (ur *userRepository) getByID(ctx context.Context, db DB, id uuid.UUID) (*us
 }
 
 func (ur *userRepository) buildSelectByIDQuery(id uuid.UUID) (string, []any, error) {
-	return ur.sqlBuilder.Select(allColumns...).From("users").
+	return ur.sb.Select(userColumns...).From("users").
 		Where("id = ?", id).ToSql()
 }
 
@@ -164,7 +164,7 @@ func (ur *userRepository) getByEmail(ctx context.Context, db DB, email user.Emai
 }
 
 func (ur *userRepository) buildSelectByEmailQuery(email user.Email) (string, []any, error) {
-	return ur.sqlBuilder.Select(allColumns...).From("users").
+	return ur.sb.Select(userColumns...).From("users").
 		Where("email = ?", email).ToSql()
 }
 
@@ -228,7 +228,7 @@ func (ur *userRepository) update(ctx context.Context, db DB, updUser *user.User)
 }
 
 func (ur *userRepository) buildUpdateQuery(record *userRecord) (string, []any, error) {
-	return ur.sqlBuilder.Update("users").SetMap(map[string]any{
+	return ur.sb.Update("users").SetMap(map[string]any{
 		"tg_chat_id":       record.TgChatID,
 		"telegram_enabled": record.TgEnabled,
 		"updated_at":       record.UpdatedAt,
@@ -245,7 +245,7 @@ func (ur *userRepository) getForUpdate(ctx context.Context, db DB, id uuid.UUID)
 }
 
 func (ur *userRepository) buildSelectForUpdate(id uuid.UUID) (string, []any, error) {
-	return ur.sqlBuilder.Select(allColumns...).From("users").
+	return ur.sb.Select(userColumns...).From("users").
 		Where("id = ?", id).Suffix("FOR UPDATE").ToSql()
 }
 
@@ -286,7 +286,7 @@ func (ur *userRepository) delete(ctx context.Context, db DB, id uuid.UUID) error
 }
 
 func (ur *userRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
-	return ur.sqlBuilder.Delete("users").Where("id = ?", id).ToSql()
+	return ur.sb.Delete("users").Where("id = ?", id).ToSql()
 }
 
 func (ur *userRepository) beginTx(ctx context.Context) (*sql.Tx, func(), error) {

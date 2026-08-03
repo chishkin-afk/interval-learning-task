@@ -11,8 +11,20 @@ import (
 var (
 	ErrEmptyUserID  = errors.New("user id is empty")
 	ErrInvalidTitle = errors.New("invalid title of task")
+
+	nextSchedule = []time.Duration{
+		24 * time.Hour,
+		3 * 24 * time.Hour,
+		7 * 24 * time.Hour,
+		30 * 24 * time.Hour,
+	}
 )
 
+// Task represents a LeetCode task assigned to a user.
+//
+// A task schedules reminder notifications according to the predefined
+// notification schedule. Once all scheduled notifications have been sent,
+// the task becomes inactive.
 type Task struct {
 	id          uuid.UUID
 	userID      uuid.UUID
@@ -53,11 +65,51 @@ func New(
 		userID:      userID,
 		title:       title,
 		leetcodeURL: leetcodeURL,
-		nextNotify:  now.Add(24 * time.Hour),
-		notifyCount: 1,
+		nextNotify:  now.Add(nextSchedule[0]),
+		notifyCount: 0,
 		isActive:    true,
 		createdAt:   now,
 	}, nil
+}
+
+func Restore(
+	id uuid.UUID,
+	userID uuid.UUID,
+	title string,
+	leetcodeURL LeetcodeURL,
+	nextNotify time.Time,
+	notifyCount int8,
+	isActive bool,
+	createdAt time.Time,
+) *Task {
+	return &Task{
+		id:          id,
+		userID:      userID,
+		title:       title,
+		leetcodeURL: leetcodeURL,
+		nextNotify:  nextNotify,
+		notifyCount: notifyCount,
+		isActive:    isActive,
+		createdAt:   createdAt,
+	}
+}
+
+// Notify marks the current notification as sent and schedules the next one.
+//
+// If all scheduled notifications have been sent, the task is marked as
+// inactive. Calling Notify on an inactive task has no effect.
+func (t *Task) Notify() {
+	if !t.isActive {
+		return
+	}
+
+	t.notifyCount++
+	if int(t.notifyCount) >= len(nextSchedule) {
+		t.isActive = false
+		return
+	}
+
+	t.nextNotify = t.nextNotify.Add(nextSchedule[int(t.notifyCount)])
 }
 
 // ChangeTitle updates the task title.
