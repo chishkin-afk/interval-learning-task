@@ -22,11 +22,12 @@ func (tr *taskRepository) buildSelectQuery(id uuid.UUID) (string, []any, error) 
 		Where("id = ?", id).ToSql()
 }
 
-func (tr *taskRepository) buildListAllQuery(page, limit uint32) (string, []any, error) {
+func (tr *taskRepository) buildListAllQuery(userID uuid.UUID, page, limit uint32) (string, []any, error) {
 	page = max(page, 1)
 	offset := limit * (page - 1)
 	return tr.sb.Select(taskColumns...).From("tasks").
-		Limit(uint64(limit)).Offset(uint64(offset)).OrderBy("created_at DESC").ToSql()
+		Limit(uint64(limit)).Offset(uint64(offset)).
+		OrderBy("created_at DESC").Where("user_id = ?", userID).ToSql()
 }
 
 func (tr *taskRepository) buildCountAllQuery() (string, []any, error) {

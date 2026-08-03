@@ -8,6 +8,7 @@ const (
 	KindConflict
 	KindNotFound
 	KindUnauth
+	KindPermissionDenied
 	KindInternal
 )
 

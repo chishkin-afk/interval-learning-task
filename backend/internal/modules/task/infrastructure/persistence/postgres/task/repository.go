@@ -119,7 +119,7 @@ func (tr *taskRepository) getByID(ctx context.Context, db DB, id uuid.UUID) (*ta
 //
 // The list and the total count are read within a single read-only transaction
 // to ensure they are based on the same database snapshot.
-func (tr *taskRepository) ListAll(ctx context.Context, page, limit uint32) ([]*task.Task, int64, error) {
+func (tr *taskRepository) ListAll(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*task.Task, int64, error) {
 	tx, rollback, err := tr.beginReadTx(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("can't start tx: %w", err)
@@ -138,7 +138,7 @@ func (tr *taskRepository) ListAll(ctx context.Context, page, limit uint32) ([]*t
 		slog.Int("limit", int(limit)),
 	)
 
-	list, err := tr.listAll(ctx, tx, page, limit)
+	list, err := tr.listAll(ctx, tx, userID, page, limit)
 	if err != nil {
 		return nil, 0, fmt.Errorf("can't list tasks: %w",
 			handleError(err),
@@ -152,8 +152,8 @@ func (tr *taskRepository) ListAll(ctx context.Context, page, limit uint32) ([]*t
 	return list, count, nil
 }
 
-func (tr *taskRepository) listAll(ctx context.Context, db DB, page, limit uint32) ([]*task.Task, error) {
-	query, args, err := tr.buildListAllQuery(page, limit)
+func (tr *taskRepository) listAll(ctx context.Context, db DB, userID uuid.UUID, page, limit uint32) ([]*task.Task, error) {
+	query, args, err := tr.buildListAllQuery(userID, page, limit)
 	if err != nil {
 		return nil, err
 	}
