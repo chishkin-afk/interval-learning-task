@@ -15,6 +15,7 @@ var (
 	ErrNilTask           = errors.New("nil task")
 	ErrPoolIsStop        = errors.New("worker pool is stopped")
 	ErrPoolAlreadyClosed = errors.New("pool is already closed")
+	ErrPoolBusy          = errors.New("pool is busy")
 )
 
 // Task represents a unit of work to be executed by the worker pool.
@@ -85,6 +86,8 @@ func (wp *WorkerPool) Submit(ctx context.Context, fn func(context.Context) error
 		return ErrPoolIsStop
 	case wp.tasks <- task:
 		return nil
+	default:
+		return ErrPoolBusy
 	}
 }
 

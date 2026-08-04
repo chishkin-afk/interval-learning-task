@@ -4,32 +4,51 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/chishkin-afk/intask/backend/internal/application/dtos/requests"
 	"github.com/chishkin-afk/intask/backend/internal/application/dtos/responses"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/config"
 	authctx "github.com/chishkin-afk/intask/backend/internal/infrastructure/context"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/workerpool"
 	"github.com/chishkin-afk/intask/backend/internal/modules/task/domain/task"
 	"github.com/chishkin-afk/intask/backend/pkg/errs"
 	"github.com/google/uuid"
 )
+
+type authService interface {
+}
+
+type workerPool interface {
+	Submit(ctx context.Context, fn func(context.Context) error) error
+}
 
 // TaskService provides application-level operations for managing tasks.
 //
 // It orchestrates the creation, validation, and persistence of tasks,
 // acting as a bridge between the delivery layer (HTTP/gRPC) and the domain model.
 type TaskService struct {
+	cfg             *config.Config
 	log             *slog.Logger
 	taskPersistence task.TaskPersistenceRepository
+	wp              workerPool
 }
 
 // New creates and returns a new instance of TaskService.
 //
 // It requires a structured logger for operational visibility and a repository
 // implementation for task persistence.
-func New(log *slog.Logger, taskPersistence task.TaskPersistenceRepository) *TaskService {
+func New(
+	cfg *config.Config,
+	log *slog.Logger,
+	taskPersistence task.TaskPersistenceRepository,
+	wp workerPool,
+) *TaskService {
 	return &TaskService{
+		cfg:             cfg,
 		log:             log,
 		taskPersistence: taskPersistence,
+		wp:              wp,
 	}
 }
 
@@ -271,6 +290,69 @@ func (ts *TaskService) deleteTask(ctx context.Context, taskID uuid.UUID) error {
 	}
 
 	return nil
+}
+
+// RunNotificator starts a background loop that periodically submits
+// notification tasks to the worker pool based on the configured ticker interval.
+//
+// It respects context cancellation for graceful shutdown and handles
+// worker pool backpressure by skipping ticks when the pool is saturated.
+// This method blocks until the context is canceled or the pool is stopped.
+func (ts *TaskService) RunNotificator(ctx context.Context) {
+	ticker := time.NewTicker(ts.cfg.Service.TickerInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			ts.log.Error("notificator was stopped by ctx",
+				slog.String("error", ctx.Err().Error()),
+			)
+
+			return
+		case <-ticker.C:
+			if err := ts.wp.Submit(ctx, ts.notificate); err != nil {
+				if errors.Is(err, workerpool.ErrPoolIsDone) ||
+					errors.Is(err, workerpool.ErrPoolIsStop) {
+					return
+				}
+
+				ts.log.Warn("can't submit task into worker pool",
+					slog.String("error", err.Error()),
+				)
+			}
+		}
+	}
+}
+
+func (ts *TaskService) notificate(ctx context.Context) error {
+	ctxTimeout, cancel := context.WithTimeout(ctx, ts.cfg.Service.NotificateTimeout)
+	defer cancel()
+
+	list, err := ts.listByNotification(ctxTimeout)
+	if err != nil {
+		ts.log.Error("can't list tasks by notification",
+			slog.String("error", err.Error()),
+		)
+
+		return err
+	}
+
+	_ = list
+
+	// TODO: сделать получения всех tg chat id по user id тасок
+	// 		 и сделать фейковый (пока что) вызов notifier
+
+	return nil
+}
+
+func (ts *TaskService) listByNotification(ctx context.Context) ([]*task.Task, error) {
+	list, _, err := ts.taskPersistence.ListByNotification(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
 }
 
 func validatePagination(page, limit uint32) error {

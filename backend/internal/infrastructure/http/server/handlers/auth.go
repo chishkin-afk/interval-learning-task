@@ -7,12 +7,14 @@ import (
 	"github.com/chishkin-afk/intask/backend/internal/application/dtos/requests"
 	"github.com/chishkin-afk/intask/backend/internal/application/dtos/responses"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type authService interface {
 	Register(ctx context.Context, req *requests.AuthRequest) (*responses.Token, error)
 	Login(ctx context.Context, req *requests.AuthRequest) (*responses.Token, error)
 	GetSelf(ctx context.Context) (*responses.User, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*responses.User, error)
 	Update(ctx context.Context, req *requests.UpdateUser) (*responses.User, error)
 	Delete(ctx context.Context) error
 }
@@ -68,6 +70,28 @@ func (h *handlers) Login() gin.HandlerFunc {
 			int(resp.TTL.Seconds()),
 			"", "", false, true)
 		ctx.Status(http.StatusNoContent)
+	}
+}
+
+func (h *handlers) GetByID() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := uuid.Parse(ctx.Param("id"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.Err{
+				Error: "invalid id of user",
+			})
+			return
+		}
+
+		resp, err := h.authService.GetByID(ctx.Request.Context(), id)
+		if err != nil {
+			ctx.JSON(h.getCodeFromKind(err), &responses.Err{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
 	}
 }
 

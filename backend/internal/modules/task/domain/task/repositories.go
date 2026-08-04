@@ -18,7 +18,7 @@ type TaskPersistenceRepository interface {
 	Save(ctx context.Context, task *Task) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Task, error)
 	ListAll(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*Task, int64, error)
-	ListByNotification(ctx context.Context, page, limit uint32) ([]*Task, int64, error)
+	ListByNotification(ctx context.Context) ([]*Task, int64, error)
 	Update(ctx context.Context, id uuid.UUID, updFunc UpdateFunc) (*Task, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }

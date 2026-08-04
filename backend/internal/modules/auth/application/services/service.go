@@ -174,6 +174,18 @@ func (as *AuthService) GetSelf(ctx context.Context) (*responses.User, error) {
 	return as.userToDTO(user), nil
 }
 
+// GetSelf returns an user by id
+//
+// It gets user from db by id and returns it as dto
+func (as *AuthService) GetByID(ctx context.Context, id uuid.UUID) (*responses.User, error) {
+	user, err := as.getUserByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return as.userToDTO(user), nil
+}
+
 func (as *AuthService) getUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	got, err := as.userPersistence.GetByID(ctx, id)
 	if err != nil {

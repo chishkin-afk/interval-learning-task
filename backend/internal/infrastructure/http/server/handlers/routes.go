@@ -38,6 +38,7 @@ func New(
 				auth.POST("/register", handlers.Register())
 				auth.POST("/login", handlers.Login())
 				auth.GET("/user", handlers.GetSelf())
+				auth.GET("/user/:id", handlers.GetByID())
 				auth.PATCH("/user", handlers.UpdateUser())
 				auth.DELETE("/user", handlers.DeleteUser())
 			}

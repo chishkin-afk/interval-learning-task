@@ -45,3 +45,7 @@ workerpool:
   workers: 10
   task_buf: 20
   err_buf: 20
+
+service:
+  ticker_interval: 30s
+  notificate_timeout: 6s

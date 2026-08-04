@@ -22,6 +22,7 @@ type Config struct {
 	Persistence Persistence `yaml:"persistence"`
 	JWT         JWT         `yaml:"jwt"`
 	WorkerPool  WorkerPool  `yaml:"workerpool"`
+	Service     Service     `yaml:"service"`
 }
 
 type App struct {
@@ -80,6 +81,11 @@ type WorkerPool struct {
 	Workers int64 `yaml:"workers" validate:"required,gte=1"`
 	TaskBuf int64 `yaml:"task_buf" validate:"required,gte=1"`
 	ErrBuf  int64 `yaml:"err_buf" validate:"required,gte=1"`
+}
+
+type Service struct {
+	TickerInterval    time.Duration `yaml:"ticker_interval" validate:"required,min=100ms"`
+	NotificateTimeout time.Duration `yaml:"notificate_timeout" validate:"required,min=100ms"`
 }
 
 // New is a constructor for Config

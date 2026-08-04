@@ -154,11 +154,13 @@ func (di *DI) AuthService() *authservice.AuthService {
 func (di *DI) TaskService() *taskservice.TaskService {
 	if di.taskService == nil {
 		di.taskService = taskservice.New(
+			di.Config(),
 			di.Log(),
 			taskpg.New(
 				di.Log(),
 				di.DB(),
 			),
+			di.WorkerPool(),
 		)
 	}
 

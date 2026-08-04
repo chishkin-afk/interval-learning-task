@@ -181,7 +181,7 @@ func (tr *taskRepository) countAll(ctx context.Context, db DB) (int64, error) {
 //
 // The list and total count are retrieved within a single read-only transaction
 // to ensure they are based on the same database snapshot.
-func (tr *taskRepository) ListByNotification(ctx context.Context, page, limit uint32) ([]*task.Task, int64, error) {
+func (tr *taskRepository) ListByNotification(ctx context.Context) ([]*task.Task, int64, error) {
 	tx, rollback, err := tr.beginReadTx(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("can't start tx: %w", err)
@@ -195,12 +195,9 @@ func (tr *taskRepository) ListByNotification(ctx context.Context, page, limit ui
 		)
 	}
 
-	tr.log.Debug("listing all the tasks by notify",
-		slog.Int("page", int(page)),
-		slog.Int("limit", int(limit)),
-	)
+	tr.log.Debug("listing all the tasks by notify")
 
-	list, err := tr.listByNotification(ctx, tx, page, limit)
+	list, err := tr.listByNotification(ctx, tx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("can't list tasks by notify: %w",
 			handleError(err),
@@ -214,8 +211,8 @@ func (tr *taskRepository) ListByNotification(ctx context.Context, page, limit ui
 	return list, count, nil
 }
 
-func (tr *taskRepository) listByNotification(ctx context.Context, db DB, page, limit uint32) ([]*task.Task, error) {
-	query, args, err := tr.buildListByNotificationQuery(page, limit)
+func (tr *taskRepository) listByNotification(ctx context.Context, db DB) ([]*task.Task, error) {
+	query, args, err := tr.buildListByNotificationQuery()
 	if err != nil {
 		return nil, err
 	}

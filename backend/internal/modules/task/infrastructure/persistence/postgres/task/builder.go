@@ -34,11 +34,9 @@ func (tr *taskRepository) buildCountAllQuery() (string, []any, error) {
 	return tr.sb.Select("count(*)").From("tasks").ToSql()
 }
 
-func (tr *taskRepository) buildListByNotificationQuery(page, limit uint32) (string, []any, error) {
-	page = max(page, 1)
-	offset := limit * (page - 1)
+func (tr *taskRepository) buildListByNotificationQuery() (string, []any, error) {
 	return tr.sb.Select(taskColumns...).From("tasks").
-		Limit(uint64(limit)).Offset(uint64(offset)).
+		Limit(100).
 		Where("next_notify <= NOW() AND is_active = TRUE").OrderBy("next_notify ASC").ToSql()
 }
 
