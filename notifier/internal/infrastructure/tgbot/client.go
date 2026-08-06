@@ -1,6 +1,7 @@
 package tgbot
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -68,21 +69,36 @@ func (c *Client) Handle(endpoint any, handler telebot.HandlerFunc) {
 // as candidates for cleanup without aborting batch deliveries.
 //
 // Any other transport or API error is wrapped and returned to the caller.
-func (c *Client) SendString(msg string, chatID int64) error {
-	if _, err := c.bot.Send(telebot.ChatID(chatID), msg); err != nil {
-		if errors.Is(err, telebot.ErrBlockedByUser) ||
-			errors.Is(err, telebot.ErrChatNotFound) {
-			c.log.Warn("inactive chat, consider removing",
-				slog.Int64("chat_id", chatID),
-				slog.String("error", err.Error()),
-			)
-			return nil
+func (c *Client) SendString(ctx context.Context, msg string, chatID int64) error {
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer close(errChan)
+
+		if _, err := c.bot.Send(telebot.ChatID(chatID), msg); err != nil {
+			if errors.Is(err, telebot.ErrBlockedByUser) ||
+				errors.Is(err, telebot.ErrChatNotFound) {
+				c.log.Warn("inactive chat, consider removing",
+					slog.Int64("chat_id", chatID),
+					slog.String("error", err.Error()),
+				)
+				return
+			}
+
+			errChan <- fmt.Errorf("can't send msg: %w", err)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err, ok := <-errChan:
+		if !ok {
+			return err
 		}
 
-		return fmt.Errorf("can't send msg: %w", err)
+		return nil
 	}
-
-	return nil
 }
 
 // Use registers one or more middlewares that will be applied to every
