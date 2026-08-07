@@ -90,7 +90,8 @@ type Service struct {
 }
 
 type Cache struct {
-	Redis struct {
+	CodeTTL time.Duration `yaml:"code_ttl" validate:"required,min=100ms"`
+	Redis   struct {
 		Host string `yaml:"host" validate:"required,hostname"`
 		Port int    `yaml:"port" validate:"required,gte=1,lte=65535"`
 		Auth struct {
