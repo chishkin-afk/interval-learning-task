@@ -5,11 +5,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(cfg *config.Config, mws ...gin.HandlerFunc) *gin.Engine {
+func New(cfg *config.Config, ns notifierService, mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg)
 	router.Use(mws...)
 
-	// routes...
+	handlers := handlers{
+		notifierService: ns,
+	}
+
+	api := router.Group("/api")
+	{
+		v1 := api.Group("/v1")
+		{
+			v1.POST("/send", handlers.SendMsg())
+		}
+	}
 
 	return router
 }

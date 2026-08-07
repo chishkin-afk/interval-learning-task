@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/chishkin/intask/notifier/internal/infrastructure/config"
 	"gopkg.in/telebot.v3"
@@ -70,35 +71,25 @@ func (c *Client) Handle(endpoint any, handler telebot.HandlerFunc) {
 //
 // Any other transport or API error is wrapped and returned to the caller.
 func (c *Client) SendString(ctx context.Context, msg string, chatID int64) error {
-	errChan := make(chan error, 1)
-
-	go func() {
-		defer close(errChan)
-
-		if _, err := c.bot.Send(telebot.ChatID(chatID), msg); err != nil {
-			if errors.Is(err, telebot.ErrBlockedByUser) ||
-				errors.Is(err, telebot.ErrChatNotFound) {
-				c.log.Warn("inactive chat, consider removing",
-					slog.Int64("chat_id", chatID),
-					slog.String("error", err.Error()),
-				)
-				return
-			}
-
-			errChan <- fmt.Errorf("can't send msg: %w", err)
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case err, ok := <-errChan:
-		if !ok {
-			return err
-		}
-
-		return nil
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
 	}
+
+	if _, err := c.bot.Send(telebot.ChatID(chatID), msg); err != nil {
+		if errors.Is(err, telebot.ErrBlockedByUser) ||
+			errors.Is(err, telebot.ErrChatNotFound) {
+			c.log.Warn("inactive chat, consider removing",
+				slog.Int64("chat_id", chatID),
+				slog.String("error", err.Error()),
+			)
+			return nil
+		}
+		return err
+	}
+
+	return nil
 }
 
 // Use registers one or more middlewares that will be applied to every
@@ -137,7 +128,20 @@ func (c *Client) Start() {
 //	go client.Start()
 //	defer client.Stop()
 func (c *Client) Stop() {
-	c.log.Info("stopping bot...")
-	c.bot.Stop()
-	c.log.Info("bot has been stopped")
+	c.log.Info("stopping bot")
+
+	done := make(chan struct{})
+
+	go func() {
+		c.bot.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		c.log.Info("bot has been stopped")
+	case <-time.After(15 * time.Second):
+		c.log.Warn("bot stop timed out, forcing exit")
+		return
+	}
 }
