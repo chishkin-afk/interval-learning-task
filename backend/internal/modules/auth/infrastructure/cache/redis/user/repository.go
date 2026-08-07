@@ -52,8 +52,13 @@ func (ur *userRepository) SetByCode(ctx context.Context, uid uuid.UUID, code int
 }
 
 func (ur *userRepository) setByCode(ctx context.Context, cache Cache, uid uuid.UUID, code int) error {
+	bytes, err := uidToBytes(uid)
+	if err != nil {
+		return err
+	}
+
 	key := getCodeKey(code)
-	return cache.Set(ctx, key, uid, ur.cfg.Cache.CodeTTL).Err()
+	return cache.Set(ctx, key, bytes, ur.cfg.Cache.CodeTTL).Err()
 }
 
 func (ur *userRepository) DelByCode(ctx context.Context, code int) error {

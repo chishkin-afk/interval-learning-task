@@ -46,6 +46,23 @@ func New(cfg *config.Config, log *slog.Logger) (*Client, error) {
 	}, nil
 }
 
+// OnStart registers a /start handler and adapts it to the telebot layer.
+// Telegram delivers deep-link payloads as command arguments.
+func (c *Client) OnStart(h func(ctx context.Context, payload string, chatID int64)) {
+	c.bot.Handle("/start", func(tctx telebot.Context) error {
+		var payload string
+		if args := tctx.Args(); len(args) > 0 {
+			payload = args[0]
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		h(ctx, payload, tctx.Chat().ID)
+		return nil
+	})
+}
+
 // Handle registers a handler for the given endpoint (command, callback,
 // or message type). It is a thin, logged wrapper around telebot.Bot.Handle.
 //

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/chishkin/intask/notifier/internal/application/dtos/requests"
@@ -19,10 +20,12 @@ const (
 
 type TgBot interface {
 	SendString(ctx context.Context, msg string, chatID int64) error
+	OnStart(h func(ctx context.Context, payload string, chatID int64))
 }
 
 type BackendClient interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+	BindTg(ctx context.Context, code, chatID int64) error
 }
 
 type NotifierService struct {
@@ -40,6 +43,35 @@ func New(
 		log:           log,
 		tgbot:         tgbot,
 		backendClient: backendClient,
+	}
+}
+
+// RegisterTgHandlers wires service methods to bot commands.
+// Must be called before tgbot.Client.Start.
+func (ns *NotifierService) RegisterTgHandlers() {
+	ns.tgbot.OnStart(ns.onStart)
+}
+
+func (ns *NotifierService) onStart(ctx context.Context, payload string, chatID int64) {
+	ns.log.Debug("new user on start")
+
+	code, err := strconv.ParseInt(payload, 0, 64)
+	if err != nil {
+		ns.log.Error("can't parse code from bot",
+			slog.String("error", err.Error()),
+			slog.String("payload", payload),
+		)
+
+		ns.sendMsg(ctx, chatID, "try to follow link on site again!")
+		return
+	}
+
+	if err := ns.backendClient.BindTg(ctx, int64(code), chatID); err != nil {
+		ns.log.Error("can't bind tg on backend",
+			slog.String("error", err.Error()),
+		)
+
+		ns.sendMsg(ctx, chatID, "ooops, something wrong. please, try again later...")
 	}
 }
 

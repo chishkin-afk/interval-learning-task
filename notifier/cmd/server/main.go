@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/chishkin/intask/notifier/internal/app"
 	"github.com/joho/godotenv"
-	"gopkg.in/telebot.v3"
 )
 
 func main() {
@@ -24,6 +22,8 @@ func main() {
 	}
 	var di app.DI
 	di.TgBot()
+
+	di.NotifierService().RegisterTgHandlers()
 
 	di.Log().Info("di was loaded...")
 
@@ -36,12 +36,6 @@ func main() {
 	}()
 
 	go di.TgBot().Start()
-
-	di.TgBot().Handle("/start", func(ctx telebot.Context) error {
-		fmt.Println(ctx.Chat().ID)
-		ctx.Send("ХУЙ")
-		return nil
-	})
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),

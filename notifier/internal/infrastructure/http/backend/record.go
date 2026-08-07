@@ -14,3 +14,8 @@ type userRecord struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type bindRequest struct {
+	Code   int64 `json:"code"`
+	ChatID int64 `json:"chat_id"`
+}
