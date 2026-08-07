@@ -14,6 +14,7 @@ import (
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/persistence/postgres"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/workerpool"
 	authservice "github.com/chishkin-afk/intask/backend/internal/modules/auth/application/services"
+	userredis "github.com/chishkin-afk/intask/backend/internal/modules/auth/infrastructure/cache/redis/user"
 	userpg "github.com/chishkin-afk/intask/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
 	taskservice "github.com/chishkin-afk/intask/backend/internal/modules/task/application/services"
 	taskpg "github.com/chishkin-afk/intask/backend/internal/modules/task/infrastructure/persistence/postgres/task"
@@ -119,6 +120,7 @@ func (di *DI) Handler() *gin.Engine {
 				di.JWT(),
 				map[string]bool{
 					"/api/v1/auth/user":      true,
+					"/api/v1/auth/code":      true,
 					"/api/v1/tasks/task/:id": true,
 					"/api/v1/tasks/task":     true,
 					"/api/v1/tasks/":         true,
@@ -151,6 +153,11 @@ func (di *DI) AuthService() *authservice.AuthService {
 			di.Config(),
 			di.Log(),
 			userpg.New(di.Log(), di.DB()),
+			userredis.New(
+				di.Config(),
+				di.Log(),
+				di.Cache(),
+			),
 			di.JWT(),
 		)
 	}

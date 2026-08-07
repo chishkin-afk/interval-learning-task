@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"math/rand"
 
 	"github.com/chishkin-afk/intask/backend/internal/application/dtos/requests"
 	"github.com/chishkin-afk/intask/backend/internal/application/dtos/responses"
@@ -24,6 +25,7 @@ type AuthService struct {
 	cfg             *config.Config
 	log             *slog.Logger
 	userPersistence user.UserPersistenceRepository
+	userCache       user.UserCacheRepository
 	jwtMngr         JWTManager
 }
 
@@ -34,12 +36,14 @@ func New(
 	cfg *config.Config,
 	log *slog.Logger,
 	userPersistence user.UserPersistenceRepository,
+	userCache user.UserCacheRepository,
 	jwtMngr JWTManager,
 ) *AuthService {
 	return &AuthService{
 		cfg:             cfg,
 		log:             log,
 		userPersistence: userPersistence,
+		userCache:       userCache,
 		jwtMngr:         jwtMngr,
 	}
 }
@@ -279,6 +283,105 @@ func (as *AuthService) deleteUser(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+// GetCode initiates Telegram binding by generating a one-time code
+// for the authenticated user.
+//
+// Returns the code that user must send to the Telegram bot to complete
+// binding, or an error if authentication failed or cache is unavailable.
+func (as *AuthService) GetCode(ctx context.Context) (*responses.Code, error) {
+	userID, err := as.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return as.createCode(ctx, userID)
+}
+
+func (as *AuthService) createCode(ctx context.Context, uid uuid.UUID) (*responses.Code, error) {
+	code := rand.Intn(899999) + 100000
+	if err := as.userCache.SetByCode(ctx, uid, code); err != nil {
+		as.log.Error("can't set uid by code",
+			slog.String("user_id", uid.String()),
+			slog.String("error", err.Error()),
+		)
+
+		return nil, handleError(err)
+	}
+
+	return &responses.Code{
+		Code: code,
+	}, nil
+}
+
+// BindTg completes Telegram binding by verifying the one-time code
+// and linking the chat ID to the user account.
+//
+// The code is consumed (deleted from cache) after successful verification.
+// Returns the updated user or an error if the code is invalid/expired
+// or the update failed.
+func (as *AuthService) BindTg(ctx context.Context, req *requests.BindTg) (*responses.User, error) {
+	uid, err := as.getByCode(ctx, req.Code)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.delByCode(ctx, req.Code); err != nil {
+		return nil, err
+	}
+
+	u, err := as.updateTgChat(ctx, int64(req.ChatID), uid)
+	if err != nil {
+		return nil, err
+	}
+
+	return as.userToDTO(u), nil
+}
+
+func (as *AuthService) updateTgChat(ctx context.Context, chatID int64, uid uuid.UUID) (*user.User, error) {
+	updFunc := func(ctx context.Context, user *user.User) error {
+		user.ChangeTgChatID(chatID)
+		return nil
+	}
+
+	u, err := as.userPersistence.Update(ctx, uid, updFunc)
+	if err != nil {
+		as.log.Error("failed to update user",
+			slog.String("operation", "update"),
+			slog.String("user_id", uid.String()),
+			slog.String("error", err.Error()),
+		)
+
+		return nil, handleError(err)
+	}
+
+	return u, nil
+}
+
+func (as *AuthService) delByCode(ctx context.Context, code int) error {
+	if err := as.userCache.DelByCode(ctx, code); err != nil {
+		as.log.Error("can't delete by code",
+			slog.String("error", err.Error()),
+		)
+
+		return handleError(err)
+	}
+
+	return nil
+}
+
+func (as *AuthService) getByCode(ctx context.Context, code int) (uuid.UUID, error) {
+	uid, err := as.userCache.GetByCode(ctx, code)
+	if err != nil {
+		as.log.Error("can't get uid by code",
+			slog.String("error", err.Error()),
+		)
+
+		return uuid.Nil, handleError(err)
+	}
+
+	return uid, nil
 }
 
 func (as *AuthService) userToDTO(user *user.User) *responses.User {

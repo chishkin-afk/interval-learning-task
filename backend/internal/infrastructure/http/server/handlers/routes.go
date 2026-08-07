@@ -40,6 +40,8 @@ func New(
 				auth.GET("/user", handlers.GetSelf())
 				auth.GET("/user/:id", handlers.GetByID())
 				auth.PATCH("/user", handlers.UpdateUser())
+				auth.GET("/code", handlers.GetCode())
+				auth.PATCH("/bindtg", handlers.BindTg())
 				auth.DELETE("/user", handlers.DeleteUser())
 			}
 

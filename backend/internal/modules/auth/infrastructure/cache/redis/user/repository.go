@@ -9,6 +9,7 @@ import (
 
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/config"
 	"github.com/chishkin-afk/intask/backend/internal/modules/auth/domain/user"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -36,12 +37,12 @@ func New(
 	}
 }
 
-func (ur *userRepository) SetByCode(ctx context.Context, u *user.User, code int) error {
+func (ur *userRepository) SetByCode(ctx context.Context, uid uuid.UUID, code int) error {
 	ur.log.Debug("setting user by code",
-		slog.String("user_id", u.ID().String()),
+		slog.String("user_id", uid.String()),
 	)
 
-	if err := ur.setByCode(ctx, ur.cache, u, code); err != nil {
+	if err := ur.setByCode(ctx, ur.cache, uid, code); err != nil {
 		return fmt.Errorf("can't set by code: %w",
 			handleError(err),
 		)
@@ -50,14 +51,9 @@ func (ur *userRepository) SetByCode(ctx context.Context, u *user.User, code int)
 	return nil
 }
 
-func (ur *userRepository) setByCode(ctx context.Context, cache Cache, u *user.User, code int) error {
-	bytes, err := userToBytes(u)
-	if err != nil {
-		return err
-	}
-
+func (ur *userRepository) setByCode(ctx context.Context, cache Cache, uid uuid.UUID, code int) error {
 	key := getCodeKey(code)
-	return cache.Set(ctx, key, bytes, ur.cfg.Cache.CodeTTL).Err()
+	return cache.Set(ctx, key, uid, ur.cfg.Cache.CodeTTL).Err()
 }
 
 func (ur *userRepository) DelByCode(ctx context.Context, code int) error {
@@ -77,26 +73,26 @@ func (ur *userRepository) delByCode(ctx context.Context, cache Cache, code int) 
 	return cache.Del(ctx, key).Err()
 }
 
-func (ur *userRepository) GetByCode(ctx context.Context, code int) (*user.User, error) {
+func (ur *userRepository) GetByCode(ctx context.Context, code int) (uuid.UUID, error) {
 	ur.log.Debug("getting user by code")
 
-	u, err := ur.getByCode(ctx, ur.cache, code)
+	uid, err := ur.getByCode(ctx, ur.cache, code)
 	if err != nil {
-		return nil, fmt.Errorf("can't get user by code: %w",
+		return uuid.Nil, fmt.Errorf("can't get user by code: %w",
 			handleError(err),
 		)
 	}
 
-	return u, nil
+	return uid, nil
 }
 
-func (ur *userRepository) getByCode(ctx context.Context, cache Cache, code int) (*user.User, error) {
+func (ur *userRepository) getByCode(ctx context.Context, cache Cache, code int) (uuid.UUID, error) {
 	bytes, err := cache.Get(ctx, getCodeKey(code)).Bytes()
 	if err != nil {
-		return nil, err
+		return uuid.Nil, err
 	}
 
-	return bytesToUser(bytes)
+	return bytesToUid(bytes)
 }
 
 func getCodeKey(code int) string {

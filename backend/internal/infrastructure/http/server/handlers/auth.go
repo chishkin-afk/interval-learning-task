@@ -16,6 +16,8 @@ type authService interface {
 	GetSelf(ctx context.Context) (*responses.User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*responses.User, error)
 	Update(ctx context.Context, req *requests.UpdateUser) (*responses.User, error)
+	GetCode(ctx context.Context) (*responses.Code, error)
+	BindTg(ctx context.Context, req *requests.BindTg) (*responses.User, error)
 	Delete(ctx context.Context) error
 }
 
@@ -120,6 +122,42 @@ func (h *handlers) UpdateUser() gin.HandlerFunc {
 		}
 
 		resp, err := h.authService.Update(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromKind(err), &responses.Err{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *handlers) GetCode() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		resp, err := h.authService.GetCode(ctx.Request.Context())
+		if err != nil {
+			ctx.JSON(h.getCodeFromKind(err), &responses.Err{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *handlers) BindTg() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.BindTg
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.Err{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.authService.BindTg(ctx.Request.Context(), &req)
 		if err != nil {
 			ctx.JSON(h.getCodeFromKind(err), &responses.Err{
 				Error: err.Error(),
