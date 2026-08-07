@@ -49,3 +49,12 @@ workerpool:
 service:
   ticker_interval: 30s
   notificate_timeout: 6s
+
+cache:
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    auth:
+      username: ${REDIS_USERNAME}
+      password: ${REDIS_PASSWORD}
+      db: 0

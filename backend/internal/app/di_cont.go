@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	redisconnect "github.com/chishkin-afk/intask/backend/internal/infrastructure/cache/redis"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/config"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server/handlers"
@@ -19,6 +20,7 @@ import (
 	logger "github.com/chishkin-afk/intask/backend/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 )
 
 // DI is a dependency injection container
@@ -30,7 +32,8 @@ type DI struct {
 	cfg *config.Config
 	log *slog.Logger
 
-	db *sqlx.DB
+	db    *sqlx.DB
+	cache *redis.Client
 
 	handler *gin.Engine
 	server  *server.Server
@@ -133,6 +136,10 @@ func (di *DI) Server() *server.Server {
 			di.Config(),
 			di.Handler(),
 		)
+
+		Add(func(ctx context.Context) error {
+			return di.server.Shutdown(ctx)
+		})
 	}
 
 	return di.server
@@ -191,4 +198,35 @@ func (di *DI) WorkerPool() *workerpool.WorkerPool {
 	}
 
 	return di.workerpool
+}
+
+func (di *DI) Cache() *redis.Client {
+	if di.cache == nil {
+		cache, err := redisconnect.Connect(di.Config())
+		if err != nil {
+			slog.Error("can't connect cache",
+				slog.String("error", err.Error()),
+			)
+			os.Exit(1)
+		}
+
+		di.cache = cache
+
+		Add(func(ctx context.Context) error {
+			errCh := make(chan error, 1)
+			go func() {
+				defer close(errCh)
+				errCh <- di.cache.Close()
+			}()
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case err := <-errCh:
+				return err
+			}
+		})
+	}
+
+	return di.cache
 }

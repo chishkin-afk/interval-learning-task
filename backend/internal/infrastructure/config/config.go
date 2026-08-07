@@ -23,6 +23,7 @@ type Config struct {
 	JWT         JWT         `yaml:"jwt"`
 	WorkerPool  WorkerPool  `yaml:"workerpool"`
 	Service     Service     `yaml:"service"`
+	Cache       Cache       `yaml:"cache"`
 }
 
 type App struct {
@@ -86,6 +87,18 @@ type WorkerPool struct {
 type Service struct {
 	TickerInterval    time.Duration `yaml:"ticker_interval" validate:"required,min=100ms"`
 	NotificateTimeout time.Duration `yaml:"notificate_timeout" validate:"required,min=100ms"`
+}
+
+type Cache struct {
+	Redis struct {
+		Host string `yaml:"host" validate:"required,hostname"`
+		Port int    `yaml:"port" validate:"required,gte=1,lte=65535"`
+		Auth struct {
+			Username string `yaml:"username" validate:"omitempty"`
+			Password string `yaml:"password" validate:"omitempty"`
+			DB       int    `yaml:"db" validate:"gte=0"`
+		} `yaml:"auth"`
+	} `yaml:"redis"`
 }
 
 // New is a constructor for Config

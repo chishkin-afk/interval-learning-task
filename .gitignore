@@ -7,3 +7,5 @@ keys/
 *.key
 *.key.pub
 *.crt
+
+index.html
