@@ -18,7 +18,7 @@ import (
 )
 
 type notifierService interface {
-	SendMsg(ctx context.Context, msg string) error
+	SendMsg(ctx context.Context, userID uuid.UUID, msg string) error
 }
 
 type workerPool interface {
@@ -304,7 +304,7 @@ func (ts *TaskService) deleteTask(ctx context.Context, taskID uuid.UUID) error {
 // worker pool backpressure by skipping ticks when the pool is saturated.
 // This method blocks until the context is canceled or the pool is stopped.
 func (ts *TaskService) RunNotificator(ctx context.Context) {
-	ticker := time.NewTicker(ts.cfg.Service.TickerInterval)
+	ticker := time.NewTicker(ts.cfg.Notifier.TickerInterval)
 	defer ticker.Stop()
 
 	for {
@@ -327,7 +327,7 @@ func (ts *TaskService) RunNotificator(ctx context.Context) {
 
 			for _, t := range list {
 				if err := ts.wp.Submit(ctx, func(ctx context.Context) error {
-					ctxTimeout, cancel := context.WithTimeout(ctx, ts.cfg.Service.NotificateTimeout)
+					ctxTimeout, cancel := context.WithTimeout(ctx, ts.cfg.Notifier.NotificateTimeout)
 					defer cancel()
 
 					return ts.notificate(ctxTimeout, t)
@@ -347,7 +347,7 @@ func (ts *TaskService) RunNotificator(ctx context.Context) {
 }
 
 func (ts *TaskService) notificate(ctx context.Context, t *task.Task) error {
-	if err := ts.ns.SendMsg(ctx,
+	if err := ts.ns.SendMsg(ctx, t.UserID(),
 		fmt.Sprintf("Таска %s требует решения! %s",
 			t.Title(),
 			t.LeetcodeURL().String())); err != nil {

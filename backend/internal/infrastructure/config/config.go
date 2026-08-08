@@ -22,7 +22,7 @@ type Config struct {
 	Persistence Persistence `yaml:"persistence"`
 	JWT         JWT         `yaml:"jwt"`
 	WorkerPool  WorkerPool  `yaml:"workerpool"`
-	Service     Service     `yaml:"service"`
+	Notifier    Notifier    `yaml:"notifier"`
 	Cache       Cache       `yaml:"cache"`
 }
 
@@ -84,9 +84,11 @@ type WorkerPool struct {
 	ErrBuf  int64 `yaml:"err_buf" validate:"required,gte=1"`
 }
 
-type Service struct {
+type Notifier struct {
 	TickerInterval    time.Duration `yaml:"ticker_interval" validate:"required,min=100ms"`
 	NotificateTimeout time.Duration `yaml:"notificate_timeout" validate:"required,min=100ms"`
+	Addr              string        `yaml:"addr" validate:"required,url"`
+	Timeout           time.Duration `yaml:"timeout" validate:"required,min=100ms"`
 }
 
 type Cache struct {

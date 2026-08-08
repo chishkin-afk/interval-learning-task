@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 
 	redisconnect "github.com/chishkin-afk/intask/backend/internal/infrastructure/cache/redis"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/config"
+	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/notifier"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server/handlers"
 	"github.com/chishkin-afk/intask/backend/internal/infrastructure/http/server/middlewares"
@@ -45,6 +47,7 @@ type DI struct {
 	taskService *taskservice.TaskService
 
 	workerpool *workerpool.WorkerPool
+	notifier   *notifier.Client
 }
 
 func (di *DI) Config() *config.Config {
@@ -175,7 +178,7 @@ func (di *DI) TaskService() *taskservice.TaskService {
 				di.DB(),
 			),
 			di.WorkerPool(),
-			nil,
+			di.Notifier(),
 		)
 	}
 
@@ -237,4 +240,18 @@ func (di *DI) Cache() *redis.Client {
 	}
 
 	return di.cache
+}
+
+func (di *DI) Notifier() *notifier.Client {
+	if di.notifier == nil {
+		di.notifier = notifier.New(
+			di.Config(),
+			di.Log(),
+			&http.Client{
+				Timeout: di.Config().Notifier.Timeout,
+			},
+		)
+	}
+
+	return di.notifier
 }

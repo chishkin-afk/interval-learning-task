@@ -46,9 +46,11 @@ workerpool:
   task_buf: 20
   err_buf: 20
 
-service:
+notifier:
   ticker_interval: 30s
   notificate_timeout: 6s
+  addr: ${NOTIFIER_URL}
+  timeout: 5s
 
 cache:
   code_ttl: 1m
