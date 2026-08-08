@@ -175,6 +175,7 @@ func (di *DI) TaskService() *taskservice.TaskService {
 				di.DB(),
 			),
 			di.WorkerPool(),
+			nil,
 		)
 	}
 

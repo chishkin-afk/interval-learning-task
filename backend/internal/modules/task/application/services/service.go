@@ -3,6 +3,7 @@ package taskservice
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -16,7 +17,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type authService interface {
+type notifierService interface {
+	SendMsg(ctx context.Context, msg string) error
 }
 
 type workerPool interface {
@@ -32,6 +34,7 @@ type TaskService struct {
 	log             *slog.Logger
 	taskPersistence task.TaskPersistenceRepository
 	wp              workerPool
+	ns              notifierService
 }
 
 // New creates and returns a new instance of TaskService.
@@ -43,12 +46,14 @@ func New(
 	log *slog.Logger,
 	taskPersistence task.TaskPersistenceRepository,
 	wp workerPool,
+	ns notifierService,
 ) *TaskService {
 	return &TaskService{
 		cfg:             cfg,
 		log:             log,
 		taskPersistence: taskPersistence,
 		wp:              wp,
+		ns:              ns,
 	}
 }
 
@@ -311,37 +316,43 @@ func (ts *TaskService) RunNotificator(ctx context.Context) {
 
 			return
 		case <-ticker.C:
-			if err := ts.wp.Submit(ctx, ts.notificate); err != nil {
-				if errors.Is(err, workerpool.ErrPoolIsDone) ||
-					errors.Is(err, workerpool.ErrPoolIsStop) {
-					return
-				}
-
-				ts.log.Warn("can't submit task into worker pool",
+			list, err := ts.listByNotification(ctx)
+			if err != nil {
+				ts.log.Error("can't list tasks by notification",
 					slog.String("error", err.Error()),
 				)
+
+				break
+			}
+
+			for _, t := range list {
+				if err := ts.wp.Submit(ctx, func(ctx context.Context) error {
+					ctxTimeout, cancel := context.WithTimeout(ctx, ts.cfg.Service.NotificateTimeout)
+					defer cancel()
+
+					return ts.notificate(ctxTimeout, t)
+				}); err != nil {
+					if errors.Is(err, workerpool.ErrPoolIsDone) ||
+						errors.Is(err, workerpool.ErrPoolIsStop) {
+						return
+					}
+
+					ts.log.Warn("can't submit task into worker pool",
+						slog.String("error", err.Error()),
+					)
+				}
 			}
 		}
 	}
 }
 
-func (ts *TaskService) notificate(ctx context.Context) error {
-	ctxTimeout, cancel := context.WithTimeout(ctx, ts.cfg.Service.NotificateTimeout)
-	defer cancel()
-
-	list, err := ts.listByNotification(ctxTimeout)
-	if err != nil {
-		ts.log.Error("can't list tasks by notification",
-			slog.String("error", err.Error()),
-		)
-
+func (ts *TaskService) notificate(ctx context.Context, t *task.Task) error {
+	if err := ts.ns.SendMsg(ctx,
+		fmt.Sprintf("Таска %s требует решения! %s",
+			t.Title(),
+			t.LeetcodeURL().String())); err != nil {
 		return err
 	}
-
-	_ = list
-
-	// TODO: сделать получения всех tg chat id по user id тасок
-	// 		 и сделать фейковый (пока что) вызов notifier
 
 	return nil
 }
